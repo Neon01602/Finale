@@ -629,6 +629,33 @@
     opacity:0.45;
   }
 
+  .music-toggle{
+    position:fixed;
+    bottom:1.4rem;
+    left:1.4rem;
+    width:46px; height:46px;
+    border-radius:50%;
+    background:var(--wine);
+    color:var(--blush);
+    border:1.5px solid var(--gold);
+    display:flex; align-items:center; justify-content:center;
+    font-size:1.1rem;
+    cursor:pointer;
+    z-index:300;
+    box-shadow:0 8px 20px rgba(38,10,21,0.35);
+    transition:transform .3s ease;
+  }
+  .music-toggle:hover{ transform:scale(1.08); }
+  .music-toggle.spinning{ animation:spin 6s linear infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  #youtube-player-wrap{
+    position:fixed;
+    width:1px; height:1px;
+    overflow:hidden;
+    opacity:0;
+    pointer-events:none;
+  }
+
   @media (prefers-reduced-motion: reduce){
     *{ animation-duration:0.01ms !important; animation-iteration-count:1 !important; transition-duration:0.01ms !important; }
   }
@@ -643,6 +670,9 @@
   <button data-target="wish" aria-label="Go to wish"></button>
   <button data-target="closing" aria-label="Go to closing"></button>
 </nav>
+
+<button class="music-toggle" id="musicToggle" aria-label="Play or pause music">♪</button>
+<div id="youtube-player-wrap"><div id="youtube-player"></div></div>
 
 <!-- ============ SECTION 1 : HERO ============ -->
 <section id="hero" class="hero">
@@ -894,6 +924,75 @@
         setTimeout(()=> wishReveal.classList.add('show'), 300);
       }
     });
+  });
+  // ---------- Background music (YouTube embed) ----------
+  let ytPlayer;
+  let ytReady = false;
+  let userStarted = false;
+  const musicToggle = document.getElementById('musicToggle');
+
+  const ytScriptTag = document.createElement('script');
+  ytScriptTag.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(ytScriptTag);
+
+  window.onYouTubeIframeAPIReady = function(){
+    ytPlayer = new YT.Player('youtube-player', {
+      videoId: 'GMBSruqyXuI',
+      playerVars: {
+        autoplay: 1,
+        mute: 0,
+        loop: 1,
+        playlist: 'GMBSruqyXuI',
+        controls: 0,
+        playsinline: 1
+      },
+      events: {
+        onReady: (e)=>{
+          ytReady = true;
+          e.target.playVideo();
+          setTimeout(()=>{
+            if(ytPlayer.isMuted && ytPlayer.isMuted()){
+              musicToggle.classList.remove('spinning');
+            } else {
+              musicToggle.classList.add('spinning');
+            }
+          }, 600);
+        },
+        onStateChange: (e)=>{
+          if(e.data === YT.PlayerState.PLAYING){
+            musicToggle.classList.add('spinning');
+          } else {
+            musicToggle.classList.remove('spinning');
+          }
+        }
+      }
+    });
+  };
+
+  function startMusic(){
+    if(!ytReady) return;
+    userStarted = true;
+    ytPlayer.unMute();
+    ytPlayer.playVideo();
+  }
+
+  // First interaction anywhere unlocks sound if autoplay-with-sound was blocked
+  document.addEventListener('click', function firstTouch(){
+    if(!userStarted) startMusic();
+    document.removeEventListener('click', firstTouch);
+  }, {once:true});
+
+  musicToggle.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    if(!ytReady) return;
+    userStarted = true;
+    const state = ytPlayer.getPlayerState();
+    if(state === YT.PlayerState.PLAYING){
+      ytPlayer.pauseVideo();
+    } else {
+      ytPlayer.unMute();
+      ytPlayer.playVideo();
+    }
   });
 </script>
 </body>
